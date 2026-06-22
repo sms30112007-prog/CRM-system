@@ -1,0 +1,139 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  name         String
+  role         String        // "ADMIN", "MANAGER", "SALES_EXECUTIVE"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  // Relations
+  customers    Customer[]    @relation("AssignedCustomers")
+  leads        Lead[]        @relation("AssignedLeads")
+  deals        Deal[]        @relation("AssignedDeals")
+  tasks        Task[]        @relation("AssignedTasks")
+  activities   Activity[]    @relation("UserActivities")
+}
+
+model Customer {
+  id           String        @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  company      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Assigned Agent
+  assignedToId String?
+  assignedTo   User?         @relation("AssignedCustomers", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Relations
+  activities   Activity[]
+  tasks        Task[]
+  payments     Payment[]
+  deals        Deal[]
+}
+
+model Lead {
+  id           String        @id @default(uuid())
+  name         String
+  email        String
+  phone        String?
+  company      String?
+  status       String        // "NEW", "CONTACTED", "QUALIFIED", "LOST", "CONVERTED"
+  revenue      Float         @default(0.0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Assigned Agent
+  assignedToId String?
+  assignedTo   User?         @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Relations
+  deals        Deal[]
+  activities   Activity[]
+  tasks        Task[]
+}
+
+model Deal {
+  id           String        @id @default(uuid())
+  title        String
+  value        Float
+  stage        String        // "PROSPECT", "DISCOVERY", "PROPOSAL", "NEGOTIATION", "WON", "LOST"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  leadId       String?
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  assignedToId String?
+  assignedTo   User?         @relation("AssignedDeals", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  payments     Payment[]
+}
+
+model Activity {
+  id           String        @id @default(uuid())
+  type         String        // "CALL", "EMAIL", "MEETING", "NOTE"
+  description  String
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  leadId       String?
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  userId       String
+  user         User          @relation("UserActivities", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id           String        @id @default(uuid())
+  title        String
+  description  String?
+  dueDate      DateTime?
+  status       String        // "TODO", "IN_PROGRESS", "COMPLETED"
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  assignedToId String?
+  assignedTo   User?         @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  leadId       String?
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id           String        @id @default(uuid())
+  amount       Float
+  date         DateTime      @default(now())
+  status       String        // "PENDING", "COMPLETED", "FAILED"
+  createdAt    DateTime      @default(now())
+
+  // Relations
+  dealId       String?
+  deal         Deal?         @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  customerId   String?
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
